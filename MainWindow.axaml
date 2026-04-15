@@ -1,0 +1,94 @@
+<Window xmlns="https://github.com/avaloniaui"
+		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+		xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+		xmlns:local="using:SDS.Avalonia"
+		mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+		x:Class="SDS.Avalonia.MainWindow"
+		x:DataType="local:MainWindowViewModel"
+		Icon="Assets/SDS.ico"
+		Title="SDS">
+
+	<Design.DataContext>
+		<local:MainWindowViewModel/>
+	</Design.DataContext>
+
+	<Grid RowDefinitions="Auto,*" ColumnDefinitions="*,Auto,Auto,Auto">
+		<Slider Grid.Row="0" Grid.Column="0" Margin="10,0,10,0"
+				Minimum="0" Maximum="100"
+				Value="{Binding Volume.Value, Mode=TwoWay}"
+				VerticalAlignment="Center"
+				HorizontalAlignment="Stretch" />
+		<TextBlock Grid.Row="0" Grid.Column="1"
+				   Text="{Binding Volume.Value, Mode=OneWay, StringFormat='{}{0:0}'}"
+				   VerticalAlignment="Center"
+				   MinWidth="100"
+				   Margin="5,0,0,10" />
+
+		<ToggleSwitch Grid.Row="0" Grid.Column="2"
+					  OnContent="Muted" OffContent="Unmute"
+					  Margin="5,0,10,0"
+					  HorizontalAlignment="Stretch"
+					  IsChecked="{Binding IsMuted.Value, Mode=TwoWay}" />
+
+		<CheckBox Grid.Row="0" Grid.Column="3"
+				  Content="ブックマークのみ表示"
+				  IsChecked="{Binding IsFilterBookmarked.Value, Mode=TwoWay}"
+				  Margin="5,0,10,0"
+				  HorizontalAlignment="Stretch" />
+
+		<ScrollViewer Grid.Row="1" Grid.ColumnSpan="4">
+
+			<ItemsControl ItemsSource="{Binding AudioDeviceItems}">
+				<ItemsControl.ItemsPanel>
+					<ItemsPanelTemplate>
+						<!-- Columns=3 で3列のグリッドにする -->
+						<UniformGrid Columns="3" />
+					</ItemsPanelTemplate>
+				</ItemsControl.ItemsPanel>
+
+				<ItemsControl.ItemTemplate>
+					<DataTemplate x:DataType="{x:Type local:AudioDeviceItem}">
+						<Border>
+							<Grid RowDefinitions="*, 500, *">
+
+								<TextBlock Grid.Row="0"
+										   Text="{Binding FriendlyName, Mode=OneTime}"
+										   Margin="10,5,10,0"
+										   VerticalAlignment="Top"
+										   TextAlignment="Center" />
+
+								<Button Grid.Row="0" Grid.RowSpan="3"
+										Command="{Binding SetDefaultDeviceCommand}"
+										CommandParameter="{Binding .}"
+										IsEnabled="{Binding IsEnabled.Value}"
+										HorizontalAlignment="Stretch"
+										VerticalAlignment="Stretch">
+									<StackPanel Background="Transparent"
+												VerticalAlignment="Center">
+
+										<TextBlock Text="{Binding Name, Mode=OneTime}"
+												   TextAlignment="Center"
+												   TextWrapping="Wrap"
+												   FontSize="100"
+												   VerticalAlignment="Center"
+												   Width="{Binding $parent[StackPanel].Width}"/>
+
+									</StackPanel>
+								</Button>
+								<CheckBox Grid.Row="2"
+										  Content="Bookmark"
+										  IsChecked="{Binding IsBookmarked.Value, Mode=TwoWay}"
+										  Margin="10,0,10,5"
+										  VerticalAlignment="Bottom"
+										  VerticalContentAlignment="Center"
+										  HorizontalAlignment="Center" />
+							</Grid>
+						</Border>
+					</DataTemplate>
+				</ItemsControl.ItemTemplate>
+			</ItemsControl>
+
+		</ScrollViewer>
+	</Grid>
+</Window>
