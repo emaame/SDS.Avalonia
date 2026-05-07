@@ -13,10 +13,17 @@ namespace SDS.Avalonia
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                desktop.MainWindow = new MainWindow()
+                if (desktop.Args is { Length: > 0 } && desktop.Args[0] == "--volume-popup")
                 {
-                    DataContext = new MainWindowViewModel(),
-                };
+                    desktop.MainWindow = new VolumePopupWindow();
+                }
+                else
+                {
+                    desktop.MainWindow = new MainWindow()
+                    {
+                        DataContext = new MainWindowViewModel(),
+                    };
+                }
             }
 
             base.OnFrameworkInitializationCompleted();

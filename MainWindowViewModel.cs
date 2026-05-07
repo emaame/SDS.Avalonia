@@ -1,4 +1,4 @@
-﻿using ObservableCollections;
+using ObservableCollections;
 using R3;
 using System;
 using System.Collections.Generic;
@@ -48,7 +48,7 @@ public sealed class MainWindowViewModel : IDisposable
     public ReactiveCommand ResetDevicesCommand { get; }
 
     readonly IDisposable disposables;
-    readonly DisposableBag devicesDisposables;
+    DisposableBag devicesDisposables;
 
     readonly Lock lockDevices = new();
 
@@ -140,7 +140,29 @@ public sealed class MainWindowViewModel : IDisposable
             Items.AddRange([.. playbackDevices.AsValueEnumerable().Select(device => new AudioDeviceItem(this, device))]);
             SetBookmarked(Items, bookmarkedDeviceNames);
 
-            Items.ForEach(device => devicesDisposables.Add(device));
+            foreach (var item in Items)
+            {
+                item.IsBookmarked.Skip(1).Subscribe(_ => RefreshJumpList()).AddTo(ref devicesDisposables);
+                devicesDisposables.Add(item);
+            }
+        }
+        RefreshJumpList();
+    }
+
+    void RefreshJumpList()
+    {
+        var bookmarks = GetBookmarkedDevices();
+        JumpListManager.UpdateJumpList(bookmarks);
+    }
+
+    IEnumerable<AudioDeviceInfo> GetBookmarkedDevices()
+    {
+        lock (lockDevices)
+        {
+            return [.. Items
+                .OfType<AudioDeviceItem>()
+                .Where(static item => item.IsBookmarked.Value)
+                .Select(static item => item.Device)];
         }
     }
 
@@ -169,6 +191,8 @@ public sealed class MainWindowViewModel : IDisposable
         Width.Value = config.Width;
         Height.Value = config.Height;
         IsFilterBookmarked.Value = config.IsFilterBookmarked;
+
+        RefreshJumpList();
     }
     public void Save()
     {
@@ -184,6 +208,8 @@ public sealed class MainWindowViewModel : IDisposable
         CreateDirectorySafe(Path.GetDirectoryName(path));
         var jsonText = JsonSerializer.Serialize(config, JsonSourceGenerationContext.Default.Config);
         File.WriteAllText(path, jsonText, System.Text.Encoding.UTF8);
+
+        RefreshJumpList();
     }
 
     static void SetBookmarked(IEnumerable<AudioDeviceItem?> items, string[] bookmarkedDeviceNames)
@@ -219,5 +245,9 @@ public sealed class MainWindowViewModel : IDisposable
         }
     }
 
-    public void Dispose() => disposables.Dispose();
+    public void Dispose()
+    {
+        disposables.Dispose();
+        devicesDisposables.Dispose();
+    }
 }
