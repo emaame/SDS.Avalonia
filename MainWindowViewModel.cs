@@ -48,7 +48,9 @@ public sealed class MainWindowViewModel : IDisposable
     public ReactiveCommand ResetDevicesCommand { get; }
 
     readonly IDisposable disposables;
-    DisposableBag devicesDisposables;
+    readonly Subject<Unit> requestRefreshJumpList;
+
+    readonly SerialDisposable devicesDisposables;
 
     readonly Lock lockDevices = new();
 
@@ -82,6 +84,11 @@ public sealed class MainWindowViewModel : IDisposable
         IsFilterBookmarked.Subscribe(IsFilterBookmarkedChanged).AddTo(ref builder);
         Volume.Skip(1).Subscribe(SetVolume).AddTo(ref builder);
         IsMuted.Skip(1).Subscribe(SetIsMuted).AddTo(ref builder);
+
+        devicesDisposables = new SerialDisposable().AddTo(ref builder);
+        requestRefreshJumpList = new Subject<Unit>().AddTo(ref builder);
+
+        requestRefreshJumpList.ThrottleLast(TimeSpan.FromMilliseconds(200)).Subscribe(_ => RefreshJumpList()).AddTo(ref builder);
 
         disposables = builder.Build();
 
@@ -135,18 +142,22 @@ public sealed class MainWindowViewModel : IDisposable
         {
             var bookmarkedDeviceNames = GetBookmarkedDeviceNames();
 
-            devicesDisposables.Clear();
+            devicesDisposables.Disposable = null;
+
+            var builder = new DisposableBuilder();
             Items.Clear();
             Items.AddRange([.. playbackDevices.AsValueEnumerable().Select(device => new AudioDeviceItem(this, device))]);
             SetBookmarked(Items, bookmarkedDeviceNames);
 
             foreach (var item in Items)
             {
-                item.IsBookmarked.Skip(1).Subscribe(_ => RefreshJumpList()).AddTo(ref devicesDisposables);
-                devicesDisposables.Add(item);
+                item.IsBookmarked.Skip(1).Subscribe(requestRefreshJumpList, static (_, req) => req.OnNext(Unit.Default)).AddTo(ref builder);
+                item.AddTo(ref builder);
             }
+
+            devicesDisposables.Disposable = builder.Build();
         }
-        RefreshJumpList();
+        requestRefreshJumpList.OnNext(Unit.Default);
     }
 
     void RefreshJumpList()
@@ -192,7 +203,7 @@ public sealed class MainWindowViewModel : IDisposable
         Height.Value = config.Height;
         IsFilterBookmarked.Value = config.IsFilterBookmarked;
 
-        RefreshJumpList();
+        requestRefreshJumpList.OnNext(Unit.Default);
     }
     public void Save()
     {
@@ -209,7 +220,7 @@ public sealed class MainWindowViewModel : IDisposable
         var jsonText = JsonSerializer.Serialize(config, JsonSourceGenerationContext.Default.Config);
         File.WriteAllText(path, jsonText, System.Text.Encoding.UTF8);
 
-        RefreshJumpList();
+        requestRefreshJumpList.OnNext(Unit.Default);
     }
 
     static void SetBookmarked(IEnumerable<AudioDeviceItem?> items, string[] bookmarkedDeviceNames)

@@ -29,12 +29,8 @@ internal partial interface IObjectArray
 
 [GeneratedComInterface]
 [Guid("5632B1A4-E38A-400a-928A-D4CD63230295")]
-internal partial interface IObjectCollection
+internal partial interface IObjectCollection : IObjectArray
 {
-    // IObjectArray
-    [PreserveSig] int GetCount(out uint pcObjects);
-    [PreserveSig] int GetAt(uint uiIndex, in Guid riid, out IntPtr ppv);
-
     // IObjectCollection
     [PreserveSig] int AddObject(nint punk);
     [PreserveSig] int AddFromArray([MarshalUsing(typeof(ComInterfaceMarshaller<IObjectArray>))] IObjectArray poaSource);
@@ -76,6 +72,7 @@ internal static partial class JumpListInterop
     public static readonly Guid IidObjectArray = new("92CA9DCD-5622-4bba-A805-5E9F541BD8C9");
     public static readonly Guid IidObjectCollection = new("5632B1A4-E38A-400a-928A-D4CD63230295");
     public static readonly Guid IidShellLink = new("000214F9-0000-0000-C000-000000000046");
+    public static readonly Guid IidPropertyStore = new("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99");
 
     [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
     public static partial void SetCurrentProcessExplicitAppUserModelID(string AppID);

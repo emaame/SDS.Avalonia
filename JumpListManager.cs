@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
+using ZLinq;
 
 namespace SDS.Avalonia;
 
@@ -21,92 +22,80 @@ public static class JumpListManager
             // Ignore if failed (e.g. non-Windows)
         }
     }
-
     public static unsafe void UpdateJumpList(IEnumerable<AudioDeviceInfo> bookmarks)
     {
         var exePath = Environment.ProcessPath;
         if (exePath is null) return;
 
-        var resultCode = JumpListInterop.CoCreateInstance(
+        var createResultCode = JumpListInterop.CoCreateInstance(
             in JumpListInterop.ClsidDestinationList,
             IntPtr.Zero,
             1, // CLSCTX_INPROC_SERVER
             in JumpListInterop.IidCustomDestinationList,
             out ICustomDestinationList? destinationList);
-
-        if (resultCode != 0 || destinationList is null) return;
+        if (createResultCode != 0 || destinationList is null) return; // ログ出力等は要件に応じて追加してください
 
         destinationList.SetAppID(AppId);
 
-        resultCode = destinationList.BeginList(out _, in JumpListInterop.IidObjectArray, out _);
-        if (resultCode != 0) return;
+        var beginListCode = destinationList.BeginList(out var _, in JumpListInterop.IidObjectArray, out var _);
+        if (beginListCode != 0) return;
 
-        // Create Tasks collection
         if (JumpListInterop.CoCreateInstance(in JumpListInterop.ClsidEnumerableObjectCollection, IntPtr.Zero, 1, in JumpListInterop.IidObjectCollection, out IObjectCollection? tasksCollection) == 0 && tasksCollection is not null)
         {
-            // Add Volume Control Task
             if (CreateShellLink(exePath, "音量調整", "--volume-popup", out var volumeLink) == 0 && volumeLink is not null)
             {
-                void* punk = ComInterfaceMarshaller<IShellLinkW>.ConvertToUnmanaged(volumeLink);
-                tasksCollection.AddObject((nint)punk);
-                Marshal.Release((nint)punk);
+                void* unmanagedLink = ComInterfaceMarshaller<IShellLinkW>.ConvertToUnmanaged(volumeLink);
+                tasksCollection.AddObject((nint)unmanagedLink);
+                Marshal.Release((nint)unmanagedLink);
             }
-            destinationList.AddUserTasks((IObjectArray)tasksCollection);
+
+            destinationList.AddUserTasks(tasksCollection);
         }
 
-        // Create Bookmarks Category
         if (JumpListInterop.CoCreateInstance(in JumpListInterop.ClsidEnumerableObjectCollection, IntPtr.Zero, 1, in JumpListInterop.IidObjectCollection, out IObjectCollection? bookmarksCollection) == 0 && bookmarksCollection is not null)
         {
-            // We use friendly name for matching, but maybe we should use ID? 
-            // Arguments are limited in length, but ID should fit.
-            foreach (var device in bookmarks.Take(10))
+            foreach (var device in bookmarks.AsValueEnumerable().Take(10))
             {
-                if (CreateShellLink(exePath, device.FriendlyName, $"--switch-device \"{device.FriendlyName}\"", out var deviceLink) == 0 && deviceLink is not null)
+                if (CreateShellLink(exePath, device.FriendlyName, $"--switch-device {device.Id}", out var deviceLink) == 0 && deviceLink is not null)
                 {
-                    void* punk = ComInterfaceMarshaller<IShellLinkW>.ConvertToUnmanaged(deviceLink);
-                    bookmarksCollection.AddObject((nint)punk);
-                    Marshal.Release((nint)punk);
+                    void* unmanagedLink = ComInterfaceMarshaller<IShellLinkW>.ConvertToUnmanaged(deviceLink);
+                    bookmarksCollection.AddObject((nint)unmanagedLink);
+                    Marshal.Release((nint)unmanagedLink);
                 }
             }
-            destinationList.AppendCategory("ブックマーク", (IObjectArray)bookmarksCollection);
+
+            destinationList.AppendCategory("ブックマーク", bookmarksCollection);
         }
 
         destinationList.CommitList();
     }
 
-    static int CreateShellLink(string exePath, string title, string arguments, out IShellLinkW? shellLink)
+    static int CreateShellLink(string executablePath, string itemTitle, string commandArguments, out IShellLinkW? shellLink)
     {
-        var resultCode = JumpListInterop.CoCreateInstance(
+        var createResultCode = JumpListInterop.CoCreateInstance(
             in JumpListInterop.ClsidShellLink,
             IntPtr.Zero,
             1,
             in JumpListInterop.IidShellLink,
             out shellLink);
+        if (createResultCode != 0 || shellLink is null) return createResultCode;
 
-        if (resultCode == 0 && shellLink is not null)
+        shellLink.SetPath(executablePath);
+        shellLink.SetArguments(commandArguments);
+
+        // E_INVALIDARGを回避するため、IPropertyStore経由で必ずPKEY_Titleを設定する
+        if (shellLink is IPropertyStore propertyStore)
         {
-            shellLink.SetPath(exePath);
-            shellLink.SetArguments(arguments);
+            // PKEY_Title = {F29F85E0-4FF9-1068-AB91-08002B27B3D9}, 2
+            PropertyKey titleKey = new() { formatId = new("F29F85E0-4FF9-1068-AB91-08002B27B3D9"), propertyId = 2 };
+            PropVariant titleVariant = new() { variantType = 31 /* VT_LPWSTR */, pointerValue = Marshal.StringToCoTaskMemUni(itemTitle) };
 
-            // Set Title via PropertyStore
-            if (shellLink is IPropertyStore propertyStore)
-            {
-                var titleKey = new PropertyKey
-                {
-                    formatId = new("F29F885C-4EF1-4B3A-8393-31AE751B5448"),
-                    propertyId = 2
-                };
+            propertyStore.SetValue(in titleKey, in titleVariant);
+            propertyStore.Commit();
 
-                var pv = new PropVariant();
-                pv.variantType = 31; // VT_LPWSTR
-                pv.pointerValue = Marshal.StringToCoTaskMemUni(title);
-
-                propertyStore.SetValue(in titleKey, in pv);
-                propertyStore.Commit();
-
-                Marshal.FreeCoTaskMem(pv.pointerValue);
-            }
+            Marshal.FreeCoTaskMem(titleVariant.pointerValue);
         }
-        return resultCode;
+
+        return 0;
     }
 }

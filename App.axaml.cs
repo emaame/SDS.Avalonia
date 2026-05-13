@@ -1,32 +1,32 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Controls;
+using Avalonia.Logging;
 
-namespace SDS.Avalonia
+namespace SDS.Avalonia;
+
+public partial class App : Application
 {
-    public partial class App : Application
+    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+
+    public override void OnFrameworkInitializationCompleted()
     {
-        public override void Initialize() =>
-            AvaloniaXamlLoader.Load(this);
-
-        public override void OnFrameworkInitializationCompleted()
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            if (desktop.Args is { Length: > 0 } && desktop.Args[0] == "--volume-popup")
             {
-                if (desktop.Args is { Length: > 0 } && desktop.Args[0] == "--volume-popup")
-                {
-                    desktop.MainWindow = new VolumePopupWindow();
-                }
-                else
-                {
-                    desktop.MainWindow = new MainWindow()
-                    {
-                        DataContext = new MainWindowViewModel(),
-                    };
-                }
+                desktop.MainWindow = new VolumePopupWindow();
             }
-
-            base.OnFrameworkInitializationCompleted();
+            else
+            {
+                desktop.MainWindow = new MainWindow()
+                {
+                    DataContext = new MainWindowViewModel(),
+                };
+            }
         }
+
+        base.OnFrameworkInitializationCompleted();
     }
 }
