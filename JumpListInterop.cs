@@ -68,11 +68,13 @@ internal partial interface IShellLinkW
 
 internal static partial class JumpListInterop
 {
-    public static readonly Guid ClsidDestinationList = new("6332DEBF-87B5-4670-90C0-5E57B408A49E");
-    public static readonly Guid ClsidEnumerableObjectCollection = new("2d3467c0-6b23-4be5-9a88-24d35585145c");
+    public static readonly Guid ClsidDestinationList = new("77F10CF0-3DB5-4966-B520-B7C54FD35ED6");
+    public static readonly Guid ClsidEnumerableObjectCollection = new("2d3468c1-36a7-43b6-ac24-d3f02fd9607a");
     public static readonly Guid ClsidShellLink = new("00021401-0000-0000-C000-000000000046");
 
+    public static readonly Guid IidCustomDestinationList = new("6332DEBF-87B5-4670-90C0-5E57B408A49E");
     public static readonly Guid IidObjectArray = new("92CA9DCD-5622-4bba-A805-5E9F541BD8C9");
+    public static readonly Guid IidObjectCollection = new("5632B1A4-E38A-400a-928A-D4CD63230295");
     public static readonly Guid IidShellLink = new("000214F9-0000-0000-C000-000000000046");
 
     [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]

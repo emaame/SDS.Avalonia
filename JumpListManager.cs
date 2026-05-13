@@ -31,7 +31,7 @@ public static class JumpListManager
             in JumpListInterop.ClsidDestinationList,
             IntPtr.Zero,
             1, // CLSCTX_INPROC_SERVER
-            in JumpListInterop.ClsidDestinationList,
+            in JumpListInterop.IidCustomDestinationList,
             out ICustomDestinationList? destinationList);
 
         if (resultCode != 0 || destinationList is null) return;
@@ -42,7 +42,7 @@ public static class JumpListManager
         if (resultCode != 0) return;
 
         // Create Tasks collection
-        if (JumpListInterop.CoCreateInstance(in JumpListInterop.ClsidEnumerableObjectCollection, IntPtr.Zero, 1, in JumpListInterop.ClsidEnumerableObjectCollection, out IObjectCollection? tasksCollection) == 0 && tasksCollection is not null)
+        if (JumpListInterop.CoCreateInstance(in JumpListInterop.ClsidEnumerableObjectCollection, IntPtr.Zero, 1, in JumpListInterop.IidObjectCollection, out IObjectCollection? tasksCollection) == 0 && tasksCollection is not null)
         {
             // Add Volume Control Task
             if (CreateShellLink(exePath, "音量調整", "--volume-popup", out var volumeLink) == 0 && volumeLink is not null)
@@ -55,7 +55,7 @@ public static class JumpListManager
         }
 
         // Create Bookmarks Category
-        if (JumpListInterop.CoCreateInstance(in JumpListInterop.ClsidEnumerableObjectCollection, IntPtr.Zero, 1, in JumpListInterop.ClsidEnumerableObjectCollection, out IObjectCollection? bookmarksCollection) == 0 && bookmarksCollection is not null)
+        if (JumpListInterop.CoCreateInstance(in JumpListInterop.ClsidEnumerableObjectCollection, IntPtr.Zero, 1, in JumpListInterop.IidObjectCollection, out IObjectCollection? bookmarksCollection) == 0 && bookmarksCollection is not null)
         {
             // We use friendly name for matching, but maybe we should use ID? 
             // Arguments are limited in length, but ID should fit.
@@ -87,14 +87,14 @@ public static class JumpListManager
         {
             shellLink.SetPath(exePath);
             shellLink.SetArguments(arguments);
-            
+
             // Set Title via PropertyStore
             if (shellLink is IPropertyStore propertyStore)
             {
-                var titleKey = new PropertyKey 
-                { 
-                    formatId = new("F29F885C-4EF1-4B3A-8393-31AE751B5448"), 
-                    propertyId = 2 
+                var titleKey = new PropertyKey
+                {
+                    formatId = new("F29F885C-4EF1-4B3A-8393-31AE751B5448"),
+                    propertyId = 2
                 };
 
                 var pv = new PropVariant();
@@ -103,7 +103,7 @@ public static class JumpListManager
 
                 propertyStore.SetValue(in titleKey, in pv);
                 propertyStore.Commit();
-                
+
                 Marshal.FreeCoTaskMem(pv.pointerValue);
             }
         }
