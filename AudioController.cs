@@ -10,15 +10,15 @@ public sealed record AudioDeviceInfo(string Id, string Name, string FriendlyName
 
 public static partial class AudioController
 {
-    static readonly Guid classIdMmDeviceEnumerator = new("BCDE0395-E52F-467C-8E3D-C4579291692E");
-    static readonly Guid interfaceIdMmDeviceEnumerator = new("A95664D2-9614-4F35-A746-DE8DB63617E6");
-    static readonly Guid classIdPolicyConfig = new("870AF99C-171D-4F9E-AF0D-E63DF40C2BC9");
-    static readonly Guid interfaceIdPolicyConfig = new("F8679F50-850A-41CF-9C72-430F290290C8");
-    static readonly Guid interfaceIdAudioEndpointVolume = new("5CDF2C82-841E-4546-9722-0CF74078229A");
+    internal static readonly Guid classIdMmDeviceEnumerator = new("BCDE0395-E52F-467C-8E3D-C4579291692E");
+    internal static readonly Guid interfaceIdMmDeviceEnumerator = new("A95664D2-9614-4F35-A746-DE8DB63617E6");
+    internal static readonly Guid classIdPolicyConfig = new("870AF99C-171D-4F9E-AF0D-E63DF40C2BC9");
+    internal static readonly Guid interfaceIdPolicyConfig = new("F8679F50-850A-41CF-9C72-430F290290C8");
+    internal static readonly Guid interfaceIdAudioEndpointVolume = new("5CDF2C82-841E-4546-9722-0CF74078229A");
 
-    private const int dataFlowRender = 0;
-    private const int deviceStateActive = 1;
-    private const uint storageModeRead = 0x00000000;
+    internal const int dataFlowRender = 0;
+    internal const int deviceStateActive = 1;
+    internal const uint storageModeRead = 0x00000000;
 
     public const uint CLSCTX_INPROC_SERVER = 1;
     public const uint CLSCTX_INPROC_HANDLER = 2;
@@ -202,10 +202,11 @@ public static partial class AudioController
         return volumeEndpointPointer;
     }
 
+
     // --- P/Invoke Definitions ---
 
     [LibraryImport("ole32.dll")]
-    private static partial int CoCreateInstance(
+    internal static partial int CoCreateInstance(
         in Guid classId,
         IntPtr outerInstance,
         uint context,
@@ -213,7 +214,7 @@ public static partial class AudioController
         [MarshalUsing(typeof(ComInterfaceMarshaller<IMMDeviceEnumerator>))] out IMMDeviceEnumerator? result);
 
     [LibraryImport("ole32.dll")]
-    private static partial int CoCreateInstance(
+    internal static partial int CoCreateInstance(
         in Guid classId,
         IntPtr outerInstance,
         uint context,
@@ -221,112 +222,5 @@ public static partial class AudioController
         [MarshalUsing(typeof(ComInterfaceMarshaller<IPolicyConfig>))] out IPolicyConfig? result);
 
     [LibraryImport("ole32.dll")]
-    private static partial int PropVariantClear(ref PropVariant propertyVariant);
-}
-
-// --- COM Interfaces & Structs ---
-
-[StructLayout(LayoutKind.Sequential)]
-public struct PropertyKey
-{
-    public Guid formatId;
-    public uint propertyId;
-}
-
-[StructLayout(LayoutKind.Explicit, Size = 24)]
-public struct PropVariant
-{
-    [FieldOffset(0)] public ushort variantType;
-    [FieldOffset(2)] public ushort reserved1;
-    [FieldOffset(4)] public ushort reserved2;
-    [FieldOffset(6)] public ushort reserved3;
-    [FieldOffset(8)] public IntPtr pointerValue;
-}
-
-[GeneratedComInterface]
-[Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
-internal partial interface IMMDeviceEnumerator
-{
-    [PreserveSig] int EnumAudioEndpoints(int dataFlow, int stateMask, [MarshalUsing(typeof(ComInterfaceMarshaller<IMMDeviceCollection>))] out IMMDeviceCollection? devices);
-
-    // IntPtrのダミー定義から、実際のインターフェース取得用に修正
-    [PreserveSig] int GetDefaultAudioEndpoint(int dataFlow, int role, [MarshalUsing(typeof(ComInterfaceMarshaller<IMMDevice>))] out IMMDevice? endpoint);
-
-    [PreserveSig] int GetDevice([MarshalAs(UnmanagedType.LPWStr)] string id, IntPtr device);
-    [PreserveSig] int RegisterEndpointNotificationCallback(IntPtr client);
-    [PreserveSig] int UnregisterEndpointNotificationCallback(IntPtr client);
-}
-
-[GeneratedComInterface]
-[Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E")]
-internal partial interface IMMDeviceCollection
-{
-    [PreserveSig] int GetCount(out uint count);
-    [PreserveSig] int Item(uint index, [MarshalUsing(typeof(ComInterfaceMarshaller<IMMDevice>))] out IMMDevice? device);
-}
-
-[GeneratedComInterface]
-[Guid("D666063F-1587-4E43-81F1-B948E807363F")]
-internal partial interface IMMDevice
-{
-    [PreserveSig] int Activate(in Guid interfaceId, uint context, IntPtr activationParams, out IAudioEndpointVolume? interfacePointer);
-    [PreserveSig] int OpenPropertyStore(uint access, [MarshalUsing(typeof(ComInterfaceMarshaller<IPropertyStore>))] out IPropertyStore? properties);
-    [PreserveSig] int GetId([MarshalAs(UnmanagedType.LPWStr)] out string? id);
-    [PreserveSig] int GetState(out uint state);
-}
-
-[GeneratedComInterface]
-[Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")]
-internal partial interface IPropertyStore
-{
-    [PreserveSig] int GetCount(out uint count);
-    [PreserveSig] int GetAt(uint index, out PropertyKey key);
-    [PreserveSig] int GetValue(in PropertyKey key, out PropVariant value);
-    [PreserveSig] int SetValue(in PropertyKey key, in PropVariant value);
-    [PreserveSig] int Commit();
-}
-
-[GeneratedComInterface]
-[Guid("f8679f50-850a-41cf-9c72-430f290290c8")]
-internal partial interface IPolicyConfig
-{
-    [PreserveSig] int GetMixFormat();
-    [PreserveSig] int GetDeviceFormat();
-    [PreserveSig] int ResetDeviceFormat();
-    [PreserveSig] int SetDeviceFormat();
-    [PreserveSig] int GetProcessingPeriod();
-    [PreserveSig] int SetProcessingPeriod();
-    [PreserveSig] int GetShareMode();
-    [PreserveSig] int SetShareMode();
-    [PreserveSig] int GetPropertyValue();
-    [PreserveSig] int SetPropertyValue();
-
-    // Windows 10/11 において VTable の 11 番目 (インデックス10)
-    [PreserveSig] int SetDefaultEndpoint([MarshalAs(UnmanagedType.LPWStr)] string endpointId, int role);
-
-    [PreserveSig] int SetEndpointVisibility();
-}
-
-[GeneratedComInterface]
-[Guid("5CDF2C82-841E-4546-9722-0CF74078229A")]
-internal partial interface IAudioEndpointVolume
-{
-    [PreserveSig] int RegisterControlChangeNotify(IntPtr client);
-    [PreserveSig] int UnregisterControlChangeNotify(IntPtr client);
-    [PreserveSig] int GetChannelCount(out uint channelCount);
-    [PreserveSig] int SetMasterVolumeLevel(float levelDB, in Guid eventContext);
-    [PreserveSig] int SetMasterVolumeLevelScalar(float level, in Guid eventContext);
-    [PreserveSig] int GetMasterVolumeLevel(out float levelDB);
-    [PreserveSig] int GetMasterVolumeLevelScalar(out float level);
-    [PreserveSig] int SetChannelVolumeLevel(uint channelNumber, float levelDB, in Guid eventContext);
-    [PreserveSig] int SetChannelVolumeLevelScalar(uint channelNumber, float level, in Guid eventContext);
-    [PreserveSig] int GetChannelVolumeLevel(uint channelNumber, out float levelDB);
-    [PreserveSig] int GetChannelVolumeLevelScalar(uint channelNumber, out float level);
-    [PreserveSig] int SetMute(int isMuted, in Guid eventContext);
-    [PreserveSig] int GetMute(out int isMuted);
-    [PreserveSig] int GetVolumeStepInfo(out uint step, out uint stepCount);
-    [PreserveSig] int VolumeStepUp(in Guid eventContext);
-    [PreserveSig] int VolumeStepDown(in Guid eventContext);
-    [PreserveSig] int QueryHardwareSupport(out int pdwHardwareSupportMask);
-    [PreserveSig] int GetVolumeRange(out float pflVolumeMindB, out float pflVolumeMaxdB, out float pflVolumeIncrementdB);
+    internal static partial int PropVariantClear(ref PropVariant propertyVariant);
 }

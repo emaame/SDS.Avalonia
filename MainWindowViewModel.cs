@@ -8,7 +8,6 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
-using System.Threading.Tasks;
 using ZLinq;
 
 namespace SDS.Avalonia;
@@ -51,8 +50,11 @@ public sealed class MainWindowViewModel : IDisposable
     readonly Subject<Unit> requestRefreshJumpList;
 
     readonly SerialDisposable devicesDisposables;
+    readonly AudioStateMonitor audioMonitor;
 
     readonly Lock lockDevices = new();
+
+    bool isSystemUpdating = false;
 
     public MainWindowViewModel()
     {
@@ -82,13 +84,28 @@ public sealed class MainWindowViewModel : IDisposable
         ResetDevicesCommand = new ReactiveCommand(ResetDevices).AddTo(ref builder);
 
         IsFilterBookmarked.Subscribe(IsFilterBookmarkedChanged).AddTo(ref builder);
-        Volume.Skip(1).Subscribe(SetVolume).AddTo(ref builder);
-        IsMuted.Skip(1).Subscribe(SetIsMuted).AddTo(ref builder);
+        Volume.Skip(1).Where(_ => !isSystemUpdating).Subscribe(SetVolume).AddTo(ref builder);
+        IsMuted.Skip(1).Where(_ => !isSystemUpdating).Subscribe(SetIsMuted).AddTo(ref builder);
 
         devicesDisposables = new SerialDisposable().AddTo(ref builder);
         requestRefreshJumpList = new Subject<Unit>().AddTo(ref builder);
 
-        requestRefreshJumpList.ThrottleLast(TimeSpan.FromMilliseconds(200)).Subscribe(_ => RefreshJumpList()).AddTo(ref builder);
+        requestRefreshJumpList
+            .ThrottleLast(TimeSpan.FromMilliseconds(200))
+            .Subscribe(_ => RefreshJumpList())
+            .AddTo(ref builder);
+
+        audioMonitor = new AudioStateMonitor().AddTo(ref builder);
+
+        audioMonitor.DefaultDeviceChanged
+            .ObserveOnUIThreadDispatcher()
+            .Subscribe(SyncDefaultDeviceState)
+            .AddTo(ref builder);
+
+        audioMonitor.VolumeChanged
+            .ObserveOnUIThreadDispatcher()
+            .Subscribe(VolumeChanged)
+            .AddTo(ref builder);
 
         disposables = builder.Build();
 
@@ -106,22 +123,37 @@ public sealed class MainWindowViewModel : IDisposable
     public static void SetVolume(float volume) => AudioController.SetDefaultDeviceVolume(volume);
     public static void SetIsMuted(bool isMuted) => AudioController.SetDefaultDeviceIsMuted(isMuted);
 
-    public void SetDefaultDevice(AudioDeviceItem? target)
+    void VolumeChanged((float Volume, bool IsMuted) state)
+    {
+        isSystemUpdating = true;
+        try
+        {
+            // UIイベントのループを防止するためのガード句
+            if (Math.Abs(Volume.Value - state.Volume) > 0.01f) Volume.Value = state.Volume;
+            if (IsMuted.Value != state.IsMuted) IsMuted.Value = state.IsMuted;
+        }
+        finally
+        {
+            isSystemUpdating = false;
+        }
+    }
+
+    public static void SetDefaultDevice(AudioDeviceItem? target)
     {
         if (target is not AudioDeviceItem audioDeviceItem) return;
-
+        // OS からの通知で SyncDefaultDeviceState が呼ばれる
         AudioController.SetDefaultDevice(audioDeviceItem.Device.Id);
-
+    }
+    void SyncDefaultDeviceState(string newDefaultDeviceId)
+    {
         lock (lockDevices)
         {
             foreach (var item in Items)
             {
                 if (item is not AudioDeviceItem audioDevice) continue;
-                audioDevice.IsEnabled.Value = true;
+                audioDevice.IsEnabled.Value = audioDevice.Device.Id != newDefaultDeviceId;
             }
         }
-        audioDeviceItem.IsEnabled.Value = false;
-
         SyncToDefaultPlaybackDevice();
     }
 
