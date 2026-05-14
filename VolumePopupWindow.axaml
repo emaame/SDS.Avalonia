@@ -12,12 +12,14 @@
 		WindowDecorations="None"
 		Topmost="True"
 		CanResize="False"
+		ShowInTaskbar="False"
 		Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
 		TransparencyLevelHint="AcrylicBlur"
 		ExtendClientAreaToDecorationsHint="True">
 	<Border BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" CornerRadius="8">
 		<Grid Margin="15,0,15,0">
-			<Slider Minimum="0" Maximum="100"
+			<Slider Name="VolumeSlider"
+					Minimum="0" Maximum="100"
 					Value="{Binding Volume.Value, Mode=TwoWay}"
 					VerticalAlignment="Center" />
 		</Grid>

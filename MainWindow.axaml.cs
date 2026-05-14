@@ -1,8 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
-using Avalonia.Interactivity;
 using System;
-using System.Runtime.InteropServices;
+using static SDS.Avalonia.WindowInterop;
 
 namespace SDS.Avalonia;
 
@@ -44,12 +43,4 @@ public partial class MainWindow : Window
 
         viewModel.Save();
     }
-
-    [LibraryImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-
-    [LibraryImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 }
